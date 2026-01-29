@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedback Aggregator</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #e6edf3; line-height: 1.5; }
+    a { color: #58a6ff; text-decoration: none; }
+
+    /* Layout */
+    .container { max-width: 960px; margin: 0 auto; padding: 24px 20px; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .header h1 { font-size: 20px; font-weight: 600; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* Buttons */
+    .btn { padding: 6px 14px; border-radius: 6px; border: 1px solid #30363d; background: #21262d; color: #c9d1d9; font-size: 13px; cursor: pointer; font-weight: 500; }
+    .btn:hover { background: #30363d; }
+    .btn-primary { background: #238636; border-color: #238636; color: #fff; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-back { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 16px; }
+
+    /* Search */
+    .search-container { margin-bottom: 20px; }
+    .search-row { display: flex; gap: 8px; }
+    .search-input { flex: 1; padding: 10px 14px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; font-size: 14px; }
+    .search-input:focus { outline: none; border-color: #58a6ff; }
+    .search-input::placeholder { color: #484f58; }
+    .search-result { margin-top: 12px; padding: 16px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; font-size: 14px; line-height: 1.6; }
+    .search-result .md-body h1, .search-result .md-body h2, .search-result .md-body h3 { color: #e6edf3; margin: 14px 0 8px; font-size: 15px; }
+    .search-result .md-body h1 { font-size: 17px; }
+    .search-result .md-body p { margin: 0 0 10px; }
+    .search-result .md-body ul, .search-result .md-body ol { margin: 0 0 10px; padding-left: 22px; }
+    .search-result .md-body li { margin-bottom: 4px; }
+    .search-result .md-body strong { color: #e6edf3; }
+    .search-result .md-body code { background: #0d1117; padding: 2px 5px; border-radius: 3px; font-size: 13px; color: #f0883e; }
+    .search-result .md-body blockquote { border-left: 3px solid #30363d; padding-left: 12px; color: #8b949e; margin: 0 0 10px; }
+    .search-result .md-body hr { border: none; border-top: 1px solid #30363d; margin: 12px 0; }
+    .search-result .sources { margin-top: 12px; padding-top: 10px; border-top: 1px solid #21262d; }
+    .search-result .sources h4 { font-size: 11px; text-transform: uppercase; color: #8b949e; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .source-item { font-size: 12px; color: #8b949e; padding: 6px 4px; cursor: pointer; border-radius: 4px; }
+    .source-item:hover { background: #0d1117; }
+
+    /* Metrics row */
+    .metrics { display: flex; gap: 24px; align-items: center; padding: 12px 16px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; margin-bottom: 20px; font-size: 13px; flex-wrap: wrap; }
+    .metric { display: flex; align-items: center; gap: 6px; }
+    .metric-value { font-weight: 700; color: #f0883e; font-size: 15px; }
+    .metric-label { color: #8b949e; }
+    .metric-sep { color: #30363d; }
+    .sent-neg { color: #f85149; }
+    .sent-neu { color: #d29922; }
+    .sent-pos { color: #3fb950; }
+
+    /* Badges */
+    .badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+    .badge-discord { background: #5865f233; color: #7289da; }
+    .badge-github { background: #23862233; color: #3fb950; }
+    .badge-twitter { background: #1d9bf033; color: #1da1f2; }
+    .badge-support { background: #f0883e33; color: #f0883e; }
+    .badge-forum { background: #8b5cf633; color: #a78bfa; }
+    .badge-cat { background: #30363d; color: #c9d1d9; }
+    .badge-negative { background: #f8514922; color: #f85149; }
+    .badge-positive { background: #3fb95022; color: #3fb950; }
+    .badge-neutral { background: #d2992222; color: #d29922; }
+    .badge-effort-low { background: #3fb95022; color: #3fb950; }
+    .badge-effort-medium { background: #d2992222; color: #d29922; }
+    .badge-effort-high { background: #f8514922; color: #f85149; }
+    .badge-impact { background: #58a6ff22; color: #58a6ff; }
+    .badge-priority { background: #f0883e22; color: #f0883e; }
+    .badge-cluster-impact { background: #da3633; color: #fff; font-weight: 700; }
+
+    /* Priority list */
+    .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; margin-bottom: 10px; font-weight: 600; }
+    .priority-list { border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
+    .priority-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #21262d; cursor: pointer; transition: background 0.15s; }
+    .priority-item:last-child { border-bottom: none; }
+    .priority-item:hover { background: #161b22; }
+    .priority-rank { color: #484f58; font-size: 12px; font-weight: 700; width: 20px; text-align: right; flex-shrink: 0; padding-top: 2px; }
+    .priority-body { flex: 1; min-width: 0; }
+    .priority-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 4px; align-items: center; }
+    .priority-preview { font-size: 13px; color: #c9d1d9; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .priority-summary { font-size: 12px; color: #8b949e; margin-top: 4px; }
+
+    /* Bubble chart */
+    .bubble-chart-container { position: relative; margin-bottom: 20px; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; background: #161b22; }
+    .bubble-canvas { display: block; width: 100%; }
+    .bubble-tooltip { display: none; position: absolute; padding: 8px 12px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; font-size: 12px; color: #e6edf3; pointer-events: none; z-index: 10; max-width: 250px; line-height: 1.4; }
+    .bubble-tooltip strong { color: #f0883e; }
+
+    /* Feedback table page */
+    .filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+    .filter-select { padding: 5px 10px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; font-size: 13px; }
+    .filter-select:focus { outline: none; border-color: #58a6ff; }
+    .fb-table { width: 100%; border-collapse: collapse; }
+    .fb-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; padding: 8px 10px; border-bottom: 1px solid #30363d; font-weight: 600; }
+    .fb-table td { padding: 8px 10px; border-bottom: 1px solid #21262d; font-size: 13px; }
+    .fb-table tr { cursor: pointer; transition: background 0.15s; }
+    .fb-table tbody tr:hover { background: #161b22; }
+    .fb-preview { max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #c9d1d9; }
+    .fb-date { color: #484f58; white-space: nowrap; font-size: 12px; }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: flex-start; padding: 60px 20px; overflow-y: auto; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #161b22; border: 1px solid #30363d; border-radius: 8px; width: 100%; max-width: 640px; padding: 24px; position: relative; }
+    .modal-close { position: absolute; top: 12px; right: 14px; background: none; border: none; color: #8b949e; font-size: 20px; cursor: pointer; padding: 4px; }
+    .modal-close:hover { color: #e6edf3; }
+    .modal h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; margin-bottom: 12px; }
+    .modal-content { font-size: 14px; line-height: 1.7; color: #e6edf3; margin-bottom: 16px; }
+    .modal-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .scores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 20px; }
+    .score-item { background: #0d1117; border-radius: 4px; padding: 8px 10px; }
+    .score-label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.3px; }
+    .score-value { font-size: 16px; font-weight: 700; color: #f0883e; }
+
+    /* Similar issues in modal */
+    .similar-section { border-top: 1px solid #30363d; padding-top: 16px; }
+    .similar-item { padding: 8px 6px; border-bottom: 1px solid #21262d; font-size: 13px; cursor: pointer; border-radius: 4px; }
+    .similar-item:last-child { border-bottom: none; }
+    .similar-item:hover { background: #0d1117; }
+    .similar-badges { display: flex; gap: 4px; margin-bottom: 3px; }
+    .similar-text { color: #8b949e; }
+
+    /* Cluster modal */
+    .solution-box { background: #0d1117; border: 1px solid #1f6feb44; border-left: 3px solid #1f6feb; border-radius: 6px; padding: 12px 14px; margin-bottom: 16px; }
+    .solution-header { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #1f6feb; font-weight: 700; margin-bottom: 6px; }
+    .solution-text { font-size: 13px; color: #c9d1d9; line-height: 1.6; }
+    .cluster-summary { font-size: 14px; color: #c9d1d9; line-height: 1.6; margin-bottom: 16px; padding: 12px; background: #0d1117; border-radius: 6px; border-left: 3px solid #f0883e; }
+    .cluster-scores-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: nowrap; }
+    .cluster-scores-row .score-item { flex: 1; min-width: 0; text-align: center; }
+    .cluster-complaints-section { border-top: 1px solid #30363d; padding-top: 16px; margin-top: 4px; }
+    .cluster-complaint { padding: 10px 8px; border-bottom: 1px solid #21262d; cursor: pointer; border-radius: 4px; }
+    .cluster-complaint:last-child { border-bottom: none; }
+    .cluster-complaint:hover { background: #0d1117; }
+    .cluster-complaint-badges { display: flex; gap: 4px; margin-bottom: 4px; }
+    .cluster-complaint-text { font-size: 13px; color: #8b949e; }
+
+    .loading { color: #8b949e; font-style: italic; font-size: 13px; }
+    .empty { color: #484f58; font-size: 13px; padding: 20px 0; text-align: center; }
+
+    /* Seed/Cluster bar */
+    .seed-bar { padding: 14px 16px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .seed-msg { font-size: 13px; color: #8b949e; }
+  </style>
+</head>
+<body>
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Seed bar -->
+    <div id="seedBar" class="seed-bar" style="display:none;">
+      <span class="seed-msg" id="seedMsg">No data. Seed the database to get started.</span>
+      <button class="btn btn-primary" id="seedBtn" onclick="seedData()">Seed Database</button>
+    </div>
+    <!-- Cluster bar -->
+    <div id="clusterBar" class="seed-bar" style="display:none;">
+      <span class="seed-msg" id="clusterMsg">Group similar feedback into clusters for actionable insights.</span>
+      <button class="btn btn-primary" id="clusterBtn" onclick="runClustering()">Run Clustering</button>
+    </div>
+
+    <!-- PAGE: Dashboard -->
+    <div class="page active" id="pageDashboard">
+      <div class="header">
+        <h1>Feedback Aggregator</h1>
+        <button class="btn" onclick="navigate('feedback')">View All Feedback &rarr;</button>
+      </div>
+
+      <!-- RAG Search -->
+      <div class="search-container">
+        <div class="search-row">
+          <input class="search-input" id="searchInput" type="text" placeholder="Ask a question about customer feedback..." onkeydown="if(event.key==='Enter')doSearch()">
+          <button class="btn btn-primary" id="searchBtn" onclick="doSearch()">Ask</button>
+        </div>
+        <div id="searchResult"></div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metrics" id="metricsRow">
+        <span class="loading">Loading metrics...</span>
+      </div>
+
+      <!-- Bubble Chart -->
+      <div id="bubbleSection" style="display:none;">
+        <div class="section-title">Impact vs Effort Matrix</div>
+        <div class="bubble-chart-container">
+          <canvas class="bubble-canvas" id="bubbleCanvas" height="300"></canvas>
+          <div class="bubble-tooltip" id="bubbleTooltip"></div>
+        </div>
+      </div>
+
+      <!-- Top 10 Priority -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="section-title" style="margin-bottom:0">Top 10 Priority Issues</div>
+        <button class="btn" id="viewAllClustersBtn" style="display:none" onclick="navigate('clusters')">View All Clusters &rarr;</button>
+      </div>
+      <div class="priority-list" id="priorityList">
+        <div style="padding:14px"><span class="loading">Loading...</span></div>
+      </div>
+    </div>
+
+    <!-- PAGE: All Feedback -->
+    <div class="page" id="pageFeedback">
+      <button class="btn btn-back" onclick="navigate('dashboard')">&larr; Back to Dashboard</button>
+      <div class="header">
+        <h1>All Feedback</h1>
+      </div>
+
+      <div class="filters">
+        <select class="filter-select" id="filterSource" onchange="loadFeedbackTable()">
+          <option value="">All Sources</option>
+          <option value="discord">Discord</option>
+          <option value="github">GitHub</option>
+          <option value="twitter">Twitter</option>
+          <option value="support">Support</option>
+          <option value="forum">Forum</option>
+        </select>
+        <select class="filter-select" id="filterCategory" onchange="loadFeedbackTable()">
+          <option value="">All Categories</option>
+        </select>
+        <select class="filter-select" id="filterSentiment" onchange="loadFeedbackTable()">
+          <option value="">All Sentiment</option>
+          <option value="negative">Negative</option>
+          <option value="neutral">Neutral</option>
+          <option value="positive">Positive</option>
+        </select>
+        <select class="filter-select" id="filterSort" onchange="loadFeedbackTable()">
+          <option value="priority_score">Sort: Priority</option>
+          <option value="impact_score">Sort: Impact</option>
+          <option value="credibility_score">Sort: Credibility</option>
+          <option value="sentiment_score">Sort: Sentiment</option>
+          <option value="engagement_count">Sort: Engagement</option>
+          <option value="created_at">Sort: Date</option>
+        </select>
+      </div>
+
+      <table class="fb-table">
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Category</th>
+            <th>Sentiment</th>
+            <th>Priority</th>
+            <th>Impact</th>
+            <th>Effort</th>
+            <th>Feedback</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="feedbackBody">
+          <tr><td colspan="8" class="loading" style="padding:14px">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PAGE: All Clusters -->
+    <div class="page" id="pageClusters">
+      <button class="btn btn-back" onclick="navigate('dashboard')">&larr; Back to Dashboard</button>
+      <div class="header">
+        <h1>All Clusters</h1>
+      </div>
+
+      <div class="filters">
+        <select class="filter-select" id="clusterFilterCategory" onchange="renderClustersList()">
+          <option value="">All Categories</option>
+        </select>
+        <select class="filter-select" id="clusterFilterEffort" onchange="renderClustersList()">
+          <option value="">All Effort</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+        <select class="filter-select" id="clusterSort" onchange="renderClustersList()">
+          <option value="priority">Sort: Priority</option>
+          <option value="impact">Sort: Impact</option>
+          <option value="sentiment">Sort: Sentiment (worst first)</option>
+        </select>
+      </div>
+
+      <div class="priority-list" id="clustersList">
+        <div style="padding:14px"><span class="loading">Loading...</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '';
+    let insightsData = null;
+    let currentCluster = null;
+
+    const CAT_COLORS = {
+      performance: '#f85149', pricing: '#f0883e', docs: '#58a6ff',
+      reliability: '#da3633', dx: '#3fb950', other: '#8b949e'
+    };
+
+    // ─── Routing ────────────────────────────────────────
+    function navigate(page) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      if (page === 'feedback') {
+        document.getElementById('pageFeedback').classList.add('active');
+        window.location.hash = '#/feedback';
+        loadFeedbackTable();
+      } else if (page === 'clusters') {
+        document.getElementById('pageClusters').classList.add('active');
+        window.location.hash = '#/clusters';
+        loadClustersPage();
+      } else {
+        document.getElementById('pageDashboard').classList.add('active');
+        window.location.hash = '#/';
+      }
+    }
+
+    window.addEventListener('hashchange', () => {
+      if (window.location.hash === '#/feedback') navigate('feedback');
+      else if (window.location.hash === '#/clusters') navigate('clusters');
+      else navigate('dashboard');
+    });
+
+    // ─── Init ───────────────────────────────────────────
+    async function init() {
+      try {
+        const res = await fetch(`${API}/api/insights`);
+        insightsData = await res.json();
+
+        if (insightsData.total === 0) {
+          document.getElementById('seedBar').style.display = 'flex';
+          return;
+        }
+
+        renderMetrics();
+        loadPriorityList();
+        populateCategoryFilter();
+
+        if (insightsData.isClustered) {
+          renderBubbleChart();
+          document.getElementById('viewAllClustersBtn').style.display = '';
+        } else {
+          document.getElementById('clusterBar').style.display = 'flex';
+        }
+
+        if (window.location.hash === '#/feedback') navigate('feedback');
+      } catch (err) {
+        console.error('Init failed:', err);
+      }
+    }
+
+    // ─── Seed ───────────────────────────────────────────
+    async function seedData() {
+      const btn = document.getElementById('seedBtn');
+      const msg = document.getElementById('seedMsg');
+      btn.disabled = true;
+      msg.textContent = 'Seeding... (this processes each item through Workers AI)';
+      try {
+        const res = await fetch(`${API}/api/seed`, { method: 'POST' });
+        const data = await res.json();
+        msg.textContent = data.message;
+        if (data.results || data.total > 0) {
+          document.getElementById('seedBar').style.display = 'none';
+          init();
+        }
+      } catch (err) {
+        msg.textContent = 'Error: ' + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ─── Clustering ─────────────────────────────────────
+    async function runClustering() {
+      const btn = document.getElementById('clusterBtn');
+      const msg = document.getElementById('clusterMsg');
+      btn.disabled = true;
+      msg.textContent = 'Clustering feedback with AI... (this may take a minute)';
+      try {
+        const res = await fetch(`${API}/api/cluster`, { method: 'POST' });
+        const data = await res.json();
+        msg.textContent = data.message;
+        document.getElementById('clusterBar').style.display = 'none';
+        init();
+      } catch (err) {
+        msg.textContent = 'Error: ' + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ─── Metrics ────────────────────────────────────────
+    function renderMetrics() {
+      const d = insightsData;
+      const sentMap = {};
+      d.bySentiment.forEach(s => sentMap[s.sentiment] = s.count);
+      const neg = sentMap['negative'] || 0;
+      const neu = sentMap['neutral'] || 0;
+      const pos = sentMap['positive'] || 0;
+      const total = d.total;
+      const pct = v => total > 0 ? Math.round(v / total * 100) : 0;
+      const topCat = d.byCategory[0];
+
+      document.getElementById('metricsRow').innerHTML = `
+        <div class="metric">
+          <span class="metric-value">${total}</span>
+          <span class="metric-label">total items</span>
+        </div>
+        <span class="metric-sep">|</span>
+        <div class="metric">
+          <span class="sent-neg">${pct(neg)}% negative</span>
+          <span class="metric-sep">&middot;</span>
+          <span class="sent-neu">${pct(neu)}% neutral</span>
+          <span class="metric-sep">&middot;</span>
+          <span class="sent-pos">${pct(pos)}% positive</span>
+        </div>
+        <span class="metric-sep">|</span>
+        <div class="metric">
+          <span class="metric-label">Top category:</span>
+          <span class="badge badge-cat">${topCat ? topCat.category : '-'}</span>
+          <span class="metric-value" style="font-size:13px">${topCat ? topCat.count : 0}</span>
+        </div>
+      `;
+    }
+
+    // ─── Priority List ──────────────────────────────────
+    async function loadPriorityList() {
+      const el = document.getElementById('priorityList');
+
+      if (insightsData && insightsData.isClustered && insightsData.topPriority) {
+        // Render clusters
+        if (insightsData.topPriority.length === 0) {
+          el.innerHTML = '<div class="empty">No clusters found</div>';
+          return;
+        }
+
+        el.innerHTML = insightsData.topPriority.map((cluster, i) => `
+          <div class="priority-item" onclick='openClusterModal(${JSON.stringify(cluster).replace(/'/g, "&#39;")})'>
+            <div class="priority-rank">${i + 1}</div>
+            <div class="priority-body">
+              <div class="priority-badges">
+                <span class="badge badge-cat">${cluster.category}</span>
+                <span class="badge badge-cluster-impact">${cluster.impact_score} complaints</span>
+                <span class="badge badge-effort-${cluster.effort_score || 'medium'}">Effort: ${cluster.effort_score || 'medium'}</span>
+                <span class="badge badge-priority">Priority: ${cluster.priority_score.toFixed(2)}</span>
+              </div>
+              <div class="priority-preview"><strong>${esc(cluster.title)}</strong></div>
+              <div class="priority-summary">${esc(cluster.summary)}</div>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        // Render individual items (fallback)
+        try {
+          const res = await fetch(`${API}/api/feedback?sort=priority_score&limit=10`);
+          const data = await res.json();
+
+          if (data.data.length === 0) {
+            el.innerHTML = '<div class="empty">No feedback data</div>';
+            return;
+          }
+
+          el.innerHTML = data.data.map((item, i) => `
+            <div class="priority-item" onclick='openModal(${JSON.stringify(item).replace(/'/g, "&#39;")})'>
+              <div class="priority-rank">${i + 1}</div>
+              <div class="priority-body">
+                <div class="priority-badges">
+                  <span class="badge badge-${item.source}">${item.source}</span>
+                  <span class="badge badge-cat">${item.category}</span>
+                  <span class="badge badge-${item.sentiment}">${item.sentiment}</span>
+                  <span class="badge badge-impact">Impact: ${item.impact_score || 1}</span>
+                  <span class="badge badge-effort-${item.effort_score || 'medium'}">Effort: ${item.effort_score || 'medium'}</span>
+                  <span class="badge badge-priority">Priority: ${item.priority_score.toFixed(2)}</span>
+                </div>
+                <div class="priority-preview">${esc(item.content)}</div>
+              </div>
+              <div style="font-size:11px;color:#484f58;white-space:nowrap;flex-shrink:0;padding-top:2px">${fmtDate(item.created_at)}</div>
+            </div>
+          `).join('');
+        } catch (err) {
+          console.error('Priority load failed:', err);
+        }
+      }
+    }
+
+    // ─── Bubble Chart ───────────────────────────────────
+    let bubbleData = [];
+
+    function renderBubbleChart() {
+      const clusters = insightsData.allClusters || [];
+      if (clusters.length === 0) return;
+
+      document.getElementById('bubbleSection').style.display = 'block';
+      const canvas = document.getElementById('bubbleCanvas');
+      const container = canvas.parentElement;
+      const dpr = window.devicePixelRatio || 1;
+      const w = container.clientWidth;
+      const h = 300;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      const pad = { top: 30, right: 20, bottom: 35, left: 45 };
+      const cw = w - pad.left - pad.right;
+      const ch = h - pad.top - pad.bottom;
+      const midX = pad.left + cw / 2;
+      const midY = pad.top + ch / 2;
+
+      // Quadrant backgrounds
+      ctx.globalAlpha = 0.06;
+      ctx.fillStyle = '#3fb950'; ctx.fillRect(pad.left, pad.top, cw / 2, ch / 2); // top-left: quick wins
+      ctx.fillStyle = '#d29922'; ctx.fillRect(midX, pad.top, cw / 2, ch / 2); // top-right: major
+      ctx.fillStyle = '#484f58'; ctx.fillRect(pad.left, midY, cw / 2, ch / 2); // bottom-left: fill-ins
+      ctx.fillStyle = '#f85149'; ctx.fillRect(midX, midY, cw / 2, ch / 2); // bottom-right: avoid
+      ctx.globalAlpha = 1;
+
+      // Quadrant labels
+      ctx.font = '10px -apple-system, sans-serif';
+      ctx.fillStyle = '#3fb95066'; ctx.fillText('Quick Wins', pad.left + 6, pad.top + 16);
+      ctx.fillStyle = '#d2992266'; ctx.fillText('Major Projects', midX + 6, pad.top + 16);
+      ctx.fillStyle = '#484f5866'; ctx.fillText('Fill-ins', pad.left + 6, midY + 16);
+      ctx.fillStyle = '#f8514966'; ctx.fillText('Avoid', midX + 6, midY + 16);
+
+      // Divider lines
+      ctx.strokeStyle = '#30363d';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(midX, pad.top); ctx.lineTo(midX, pad.top + ch); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pad.left, midY); ctx.lineTo(pad.left + cw, midY); ctx.stroke();
+
+      // Axes labels
+      ctx.fillStyle = '#8b949e';
+      ctx.font = '11px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Low', pad.left + cw * 0.17, h - 8);
+      ctx.fillText('Medium', pad.left + cw * 0.5, h - 8);
+      ctx.fillText('High', pad.left + cw * 0.83, h - 8);
+      ctx.fillText('Effort \u2192', pad.left + cw * 0.5, h - 20);
+
+      ctx.save();
+      ctx.translate(12, pad.top + ch / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.fillText('Impact \u2192', 0, 0);
+      ctx.restore();
+
+      // Calculate bubble positions
+      const maxImpact = Math.max(...clusters.map(c => c.impact_score), 1);
+      const maxPriority = Math.max(...clusters.map(c => c.priority_score), 1);
+      const effortX = { low: 0.17, medium: 0.5, high: 0.83 };
+
+      bubbleData = clusters.map(c => {
+        const ex = effortX[c.effort_score] || 0.5;
+        const jitter = (Math.random() - 0.5) * 0.1;
+        const x = pad.left + (ex + jitter) * cw;
+        const yNorm = c.impact_score / maxImpact;
+        const y = pad.top + ch - yNorm * ch * 0.85 - ch * 0.08;
+        const r = 6 + (c.priority_score / maxPriority) * 18;
+        return { ...c, x, y, r };
+      });
+
+      // Draw bubbles
+      for (const b of bubbleData) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fillStyle = (CAT_COLORS[b.category] || '#8b949e') + '88';
+        ctx.fill();
+        ctx.strokeStyle = CAT_COLORS[b.category] || '#8b949e';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      // Interaction
+      const tooltip = document.getElementById('bubbleTooltip');
+
+      canvas.onmousemove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        let found = null;
+        for (const b of bubbleData) {
+          const dx = mx - b.x, dy = my - b.y;
+          if (dx * dx + dy * dy <= b.r * b.r) { found = b; break; }
+        }
+        if (found) {
+          canvas.style.cursor = 'pointer';
+          tooltip.style.display = 'block';
+          tooltip.innerHTML = `<strong>${esc(found.title)}</strong><br>${found.impact_score} complaints | Effort: ${found.effort_score} | Priority: ${found.priority_score.toFixed(2)}<br><span style="color:#8b949e">${found.category}</span>`;
+          let tx = found.x + found.r + 10;
+          let ty = found.y - 20;
+          if (tx + 200 > w) tx = found.x - 220;
+          if (ty < 0) ty = 10;
+          tooltip.style.left = tx + 'px';
+          tooltip.style.top = ty + 'px';
+        } else {
+          canvas.style.cursor = 'default';
+          tooltip.style.display = 'none';
+        }
+      };
+
+      canvas.onclick = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        for (const b of bubbleData) {
+          const dx = mx - b.x, dy = my - b.y;
+          if (dx * dx + dy * dy <= b.r * b.r) {
+            openClusterModal(b);
+            break;
+          }
+        }
+      };
+
+      canvas.onmouseleave = () => {
+        tooltip.style.display = 'none';
+        canvas.style.cursor = 'default';
+      };
+    }
+
+    // ─── Search (RAG) ───────────────────────────────────
+    async function doSearch() {
+      const input = document.getElementById('searchInput');
+      const btn = document.getElementById('searchBtn');
+      const resultEl = document.getElementById('searchResult');
+      const q = input.value.trim();
+      if (!q) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Thinking...';
+      resultEl.innerHTML = '<div class="search-result"><span class="loading">Analyzing feedback with AI...</span></div>';
+
+      try {
+        const res = await fetch(`${API}/api/ask`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: q }),
+        });
+        const data = await res.json();
+
+        resultEl.innerHTML = `
+          <div class="search-result">
+            <div class="md-body">${renderMarkdown(data.answer)}</div>
+            ${data.sources && data.sources.length > 0 ? `
+              <div class="sources">
+                <h4>Sources</h4>
+                ${data.sources.map(s => `
+                  <div class="source-item" onclick="openSourceModal('${s.id}')">
+                    <span class="badge badge-${s.source}">${s.source}</span>
+                    <span class="badge badge-cat">${s.category}</span>
+                    ${esc(s.preview)}
+                  </div>
+                `).join('')}
+              </div>` : ''}
+          </div>`;
+      } catch (err) {
+        resultEl.innerHTML = `<div class="search-result" style="color:#f85149">Error: ${err.message}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Ask';
+      }
+    }
+
+    // ─── Feedback Table ─────────────────────────────────
+    function populateCategoryFilter() {
+      const sel = document.getElementById('filterCategory');
+      if (insightsData && insightsData.byCategory) {
+        insightsData.byCategory.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.category;
+          opt.textContent = c.category;
+          sel.appendChild(opt);
+        });
+      }
+    }
+
+    async function loadFeedbackTable() {
+      const source = document.getElementById('filterSource').value;
+      const category = document.getElementById('filterCategory').value;
+      const sentiment = document.getElementById('filterSentiment').value;
+      const sort = document.getElementById('filterSort').value;
+
+      const params = new URLSearchParams();
+      if (source) params.set('source', source);
+      if (category) params.set('category', category);
+      if (sentiment) params.set('sentiment', sentiment);
+      params.set('sort', sort);
+      params.set('limit', '100');
+
+      try {
+        const res = await fetch(`${API}/api/feedback?${params}`);
+        const data = await res.json();
+        const tbody = document.getElementById('feedbackBody');
+
+        if (data.data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" class="empty">No matching feedback</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.data.map(item => `
+          <tr onclick='openModal(${JSON.stringify(item).replace(/'/g, "&#39;")})'>
+            <td><span class="badge badge-${item.source}">${item.source}</span></td>
+            <td><span class="badge badge-cat">${item.category}</span></td>
+            <td><span class="badge badge-${item.sentiment}">${item.sentiment}</span></td>
+            <td style="color:#f0883e;font-weight:600;font-size:12px">${item.priority_score.toFixed(2)}</td>
+            <td style="color:#58a6ff;font-size:12px">${item.impact_score || 1}</td>
+            <td><span class="badge badge-effort-${item.effort_score || 'medium'}" style="font-size:10px">${item.effort_score || 'medium'}</span></td>
+            <td class="fb-preview">${esc(item.content)}</td>
+            <td class="fb-date">${fmtDate(item.created_at)}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Table load failed:', err);
+      }
+    }
+
+    // ─── Individual Feedback Modal ──────────────────────
+    function openModal(item, fromCluster) {
+      const sourceWeights = { support: 0.9, github: 0.7, discord: 0.5, forum: 0.5, twitter: 0.3 };
+      const baseW = sourceWeights[item.source] || 0.3;
+      const engBoost = item.engagement_count > 0 ? Math.min(0.3, Math.log10(item.engagement_count) * 0.1) : 0;
+      const payBoost = item.is_paying_customer ? 0.2 : 0;
+
+      const backBtn = (fromCluster && currentCluster)
+        ? `<button class="btn btn-back" onclick="event.stopPropagation(); openClusterModal(currentCluster)" style="margin-bottom:12px">&larr; Back to Cluster</button>`
+        : '';
+
+      document.getElementById('modalContent').innerHTML = `
+        ${backBtn}
+        <h2>Issue Detail</h2>
+        <div class="modal-badges">
+          <span class="badge badge-${item.source}">${item.source}</span>
+          <span class="badge badge-cat">${item.category}</span>
+          <span class="badge badge-${item.sentiment}">${item.sentiment}</span>
+        </div>
+        <div class="modal-content">${esc(item.content)}</div>
+        <div class="scores-grid">
+          <div class="score-item">
+            <div class="score-label">Priority</div>
+            <div class="score-value">${item.priority_score.toFixed(3)}</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Impact</div>
+            <div class="score-value" style="color:#58a6ff">${item.impact_score || 1} similar</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Effort</div>
+            <div class="score-value" style="color:${effortColor(item.effort_score)}">${item.effort_score || 'medium'}</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Sentiment</div>
+            <div class="score-value" style="color:${item.sentiment_score > 0 ? '#3fb950' : '#f85149'}">${item.sentiment_score.toFixed(3)}</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Credibility</div>
+            <div class="score-value">${item.credibility_score.toFixed(3)}</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Engagement</div>
+            <div class="score-value">${item.engagement_count.toLocaleString()}</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Paying Customer</div>
+            <div class="score-value">${item.is_paying_customer ? 'Yes' : 'No'}</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Date</div>
+            <div class="score-value" style="font-size:13px;color:#c9d1d9">${fmtDate(item.created_at)}</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8b949e;margin-bottom:16px;padding:8px;background:#0d1117;border-radius:4px">
+          <strong>Credibility breakdown:</strong>
+          Base (${item.source}): ${baseW.toFixed(1)} + Engagement: +${engBoost.toFixed(2)} (${item.engagement_count}) + Paying: +${payBoost.toFixed(1)} = <strong style="color:#f0883e">${item.credibility_score.toFixed(2)}</strong>
+        </div>
+        <div class="similar-section">
+          <h2>Similar Issues</h2>
+          <div id="similarList"><span class="loading">Loading similar issues...</span></div>
+        </div>
+      `;
+
+      document.getElementById('modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      loadSimilar(item.id);
+    }
+
+    // ─── Cluster Modal ──────────────────────────────────
+    async function openClusterModal(cluster) {
+      currentCluster = cluster;
+      document.getElementById('modalContent').innerHTML = `
+        <h2>Cluster Detail</h2>
+        <div class="modal-badges">
+          <span class="badge badge-cat">${cluster.category}</span>
+          <span class="badge badge-cluster-impact">${cluster.impact_score} complaints</span>
+          <span class="badge badge-effort-${cluster.effort_score || 'medium'}">Effort: ${cluster.effort_score || 'medium'}</span>
+        </div>
+        <div style="font-size:16px;font-weight:600;color:#e6edf3;margin-bottom:8px;">${esc(cluster.title)}</div>
+        <div class="cluster-summary">${esc(cluster.summary)}</div>
+        ${cluster.suggested_solution ? `
+          <div class="solution-box">
+            <div class="solution-header">Suggested Solution</div>
+            <div class="solution-text">${esc(cluster.suggested_solution)}</div>
+          </div>` : ''}
+        <div class="cluster-scores-row">
+          <div class="score-item">
+            <div class="score-label">Priority</div>
+            <div class="score-value">${cluster.priority_score.toFixed(2)}</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Impact</div>
+            <div class="score-value" style="color:#da3633">${cluster.impact_score}</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Effort</div>
+            <div class="score-value" style="color:${effortColor(cluster.effort_score)}">${cluster.effort_score || 'medium'}</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Sentiment</div>
+            <div class="score-value" style="color:${cluster.sentiment_avg > 0 ? '#3fb950' : '#f85149'}">${cluster.sentiment_avg.toFixed(3)}</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Credibility</div>
+            <div class="score-value">${cluster.credibility_avg.toFixed(3)}</div>
+          </div>
+        </div>
+        <div class="cluster-complaints-section">
+          <h2>Individual Complaints (${cluster.impact_score})</h2>
+          <div id="clusterComplaints"><span class="loading">Loading complaints...</span></div>
+        </div>
+      `;
+
+      document.getElementById('modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+
+      try {
+        const res = await fetch(`${API}/api/cluster/${cluster.id}/feedback`);
+        const data = await res.json();
+        const el = document.getElementById('clusterComplaints');
+
+        if (!data.data || data.data.length === 0) {
+          el.innerHTML = '<div class="empty">No complaints found</div>';
+          return;
+        }
+
+        el.innerHTML = data.data.map(item => `
+          <div class="cluster-complaint" onclick='event.stopPropagation(); openModal(${JSON.stringify(item).replace(/'/g, "&#39;")}, true)'>
+            <div class="cluster-complaint-badges">
+              <span class="badge badge-${item.source}">${item.source}</span>
+              <span class="badge badge-${item.sentiment}">${item.sentiment}</span>
+              <span class="badge badge-priority">Priority: ${item.priority_score.toFixed(2)}</span>
+            </div>
+            <div class="cluster-complaint-text">${esc(item.content.length > 200 ? item.content.slice(0, 200) + '...' : item.content)}</div>
+          </div>
+        `).join('');
+      } catch (err) {
+        document.getElementById('clusterComplaints').innerHTML =
+          '<div style="color:#f85149">Failed to load complaints</div>';
+      }
+    }
+
+    // ─── All Clusters Page ──────────────────────────────
+    function loadClustersPage() {
+      // Populate category filter from cluster data
+      const sel = document.getElementById('clusterFilterCategory');
+      if (sel.options.length <= 1 && insightsData && insightsData.allClusters) {
+        const cats = [...new Set(insightsData.allClusters.map(c => c.category))].sort();
+        cats.forEach(cat => {
+          const opt = document.createElement('option');
+          opt.value = cat;
+          opt.textContent = cat;
+          sel.appendChild(opt);
+        });
+      }
+      renderClustersList();
+    }
+
+    function renderClustersList() {
+      const el = document.getElementById('clustersList');
+      let clusters = (insightsData && insightsData.allClusters) || [];
+      if (clusters.length === 0) {
+        el.innerHTML = '<div class="empty">No clusters available. Run clustering first.</div>';
+        return;
+      }
+
+      // Apply filters
+      const catFilter = document.getElementById('clusterFilterCategory').value;
+      const effFilter = document.getElementById('clusterFilterEffort').value;
+      const sortBy = document.getElementById('clusterSort').value;
+
+      if (catFilter) clusters = clusters.filter(c => c.category === catFilter);
+      if (effFilter) clusters = clusters.filter(c => c.effort_score === effFilter);
+
+      // Sort
+      clusters = [...clusters].sort((a, b) => {
+        if (sortBy === 'impact') return b.impact_score - a.impact_score;
+        if (sortBy === 'sentiment') return a.sentiment_avg - b.sentiment_avg;
+        return b.priority_score - a.priority_score;
+      });
+
+      if (clusters.length === 0) {
+        el.innerHTML = '<div class="empty">No clusters match the filters</div>';
+        return;
+      }
+
+      el.innerHTML = clusters.map((cluster, i) => {
+        const origIdx = insightsData.allClusters.indexOf(cluster);
+        return `
+          <div class="priority-item" onclick='openClusterModal(insightsData.allClusters[${origIdx}])'>
+            <div class="priority-rank">${i + 1}</div>
+            <div class="priority-body">
+              <div class="priority-badges">
+                <span class="badge badge-cat">${cluster.category}</span>
+                <span class="badge badge-cluster-impact">${cluster.impact_score} complaints</span>
+                <span class="badge badge-effort-${cluster.effort_score || 'medium'}">Effort: ${cluster.effort_score || 'medium'}</span>
+                <span class="badge badge-priority">Priority: ${cluster.priority_score.toFixed(2)}</span>
+              </div>
+              <div class="priority-preview"><strong>${esc(cluster.title)}</strong></div>
+              <div class="priority-summary">${esc(cluster.summary)}</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    async function openSourceModal(id) {
+      try {
+        const res = await fetch(`${API}/api/similar?id=${id}`);
+        const data = await res.json();
+        if (data.original) openModal(data.original);
+      } catch (err) {
+        console.error('Failed to load source item:', err);
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    async function loadSimilar(id) {
+      const el = document.getElementById('similarList');
+      try {
+        const res = await fetch(`${API}/api/similar?id=${id}`);
+        const data = await res.json();
+
+        if (!data.similar || data.similar.length === 0) {
+          el.innerHTML = '<div class="empty">No similar issues found</div>';
+          return;
+        }
+
+        el.innerHTML = data.similar.map(s => `
+          <div class="similar-item" onclick='event.stopPropagation(); openModal(${JSON.stringify(s).replace(/'/g, "&#39;")})'>
+            <div class="similar-badges">
+              <span class="badge badge-${s.source}">${s.source}</span>
+              <span class="badge badge-cat">${s.category}</span>
+              <span class="badge badge-${s.sentiment}">${s.sentiment}</span>
+            </div>
+            <div class="similar-text">${esc(s.content.length > 200 ? s.content.slice(0, 200) + '...' : s.content)}</div>
+          </div>
+        `).join('');
+      } catch (err) {
+        el.innerHTML = '<div style="color:#f85149">Failed to load similar issues</div>';
+      }
+    }
+
+    // ─── Helpers ─────────────────────────────────────────
+    function esc(text) {
+      const d = document.createElement('div');
+      d.textContent = text;
+      return d.innerHTML;
+    }
+
+    function fmtDate(iso) {
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function effortColor(effort) {
+      if (effort === 'low') return '#3fb950';
+      if (effort === 'high') return '#f85149';
+      return '#d29922';
+    }
+
+    function renderMarkdown(text) {
+      if (!text) return '';
+      let html = esc(text);
+      html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+      html = html.replace(/^---$/gm, '<hr>');
+      html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+      html = html.replace(/(^[-\u2022] .+$(\n|$))+/gm, function(match) {
+        const items = match.trim().split('\n').map(line =>
+          '<li>' + line.replace(/^[-\u2022] /, '') + '</li>'
+        ).join('');
+        return '<ul>' + items + '</ul>';
+      });
+      html = html.replace(/(^\d+\. .+$(\n|$))+/gm, function(match) {
+        const items = match.trim().split('\n').map(line =>
+          '<li>' + line.replace(/^\d+\. /, '') + '</li>'
+        ).join('');
+        return '<ol>' + items + '</ol>';
+      });
+      html = html.replace(/\n\n+/g, '</p><p>');
+      html = html.replace(/\n/g, '<br>');
+      html = '<p>' + html + '</p>';
+      html = html.replace(/<p><\/p>/g, '');
+      html = html.replace(/<p>(<h[123]>)/g, '$1');
+      html = html.replace(/(<\/h[123]>)<\/p>/g, '$1');
+      html = html.replace(/<p>(<ul>)/g, '$1');
+      html = html.replace(/(<\/ul>)<\/p>/g, '$1');
+      html = html.replace(/<p>(<ol>)/g, '$1');
+      html = html.replace(/(<\/ol>)<\/p>/g, '$1');
+      html = html.replace(/<p>(<hr>)<\/p>/g, '$1');
+      html = html.replace(/<p>(<blockquote>)/g, '$1');
+      html = html.replace(/(<\/blockquote>)<\/p>/g, '$1');
+      return html;
+    }
+
+    // ─── Boot ───────────────────────────────────────────
+    init();
+  </script>
+</body>
+</html>

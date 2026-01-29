@@ -1,0 +1,36 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "feedback-aggregator",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-01-28",
+	"observability": {
+		"enabled": true
+	},
+
+	// Workers AI binding
+	"ai": {
+		"binding": "AI"
+	},
+
+	// D1 Database
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "feedback-db",
+			"database_id": "30d09b42-2535-40b0-8dd6-0469b7b65945"
+		}
+	],
+
+	// Vectorize (Semantic Search)
+	"vectorize": [
+		{
+			"binding": "VECTORIZE",
+			"index_name": "feedback-index"
+		}
+	],
+
+	// Static assets
+	"assets": {
+		"directory": "./public/"
+	}
+}
