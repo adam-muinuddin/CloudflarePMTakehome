@@ -109,11 +109,22 @@ export async function generateSolution(ai: Ai, category: string, complaints: str
         role: 'system',
         content: `Based on these customer complaints about ${category}, suggest a concrete solution in 2-3 sentences. Be specific and actionable. Include what team would likely own this (e.g., engineering, docs, support, product).
 
-Respond with ONLY the solution, nothing else.`,
+IMPORTANT: Jump straight into the solution. Do NOT start with preambles like "Here are the suggested solutions", "To address these issues", "Here are specific solutions", or any introductory text. Do NOT use bullet points or numbered lists. Just write 2-3 direct sentences describing the fix.`,
       },
       { role: 'user', content: `Complaints:\n${sample}` },
     ],
   });
 
-  return ((result as unknown) as { response: string }).response.trim().slice(0, 500);
+  let raw = ((result as unknown) as { response: string }).response.trim();
+  // Strip common LLM preambles and introductory phrases
+  raw = raw.replace(/^\*{0,2}solution\*{0,2}:?\s*/i, '');
+  raw = raw.replace(/^here\s+are\s+(the\s+)?(suggested\s+|specific\s+|concrete\s+)?solutions?:?\s*/i, '');
+  raw = raw.replace(/^to\s+(address|resolve|prevent|fix|improve|tackle)\s+.*?[,:]\s*/i, '');
+  raw = raw.replace(/^in\s+order\s+to\s+.*?[,:]\s*/i, '');
+  // Strip leading markdown artifacts (**, bullet points, numbered lists)
+  raw = raw.replace(/^\*{1,2}\s*\n+/, '');
+  raw = raw.replace(/^(\d+\.\s*|[-*]\s*)+/, '');
+  // Capitalize first letter
+  raw = raw.charAt(0).toUpperCase() + raw.slice(1);
+  return raw.slice(0, 500);
 }
